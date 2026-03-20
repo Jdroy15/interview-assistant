@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interview Assistant</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0b0c12;--s1:#13141e;--s2:#1a1c28;
+  --border:rgba(255,255,255,0.08);
+  --accent:#00e5c8;--text:#dde3f5;--muted:#4e5670;
+  --red:#ff4060;--green:#00dfa0;--yellow:#f5c040;--blue:#4fa3ff;
+}
+html,body{width:100%;min-height:100vh;background:var(--bg);font-family:'Syne',sans-serif;color:var(--text)}
+body{display:grid;grid-template-columns:330px 1fr;grid-template-rows:46px 1fr;height:100vh;overflow:hidden}
+
+/* HEADER */
+header{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding:0 18px;background:var(--s1);border-bottom:1px solid var(--border)}
+.logo{display:flex;align-items:center;gap:9px}
+#dot{width:9px;height:9px;border-radius:50%;transition:all .25s;background:var(--muted)}
+#dot.ready    {background:var(--green);box-shadow:0 0 8px var(--green);animation:pp 2s ease-in-out infinite}
+#dot.listening{background:var(--green);box-shadow:0 0 10px var(--green);animation:pp .9s ease-in-out infinite}
+#dot.speech   {background:var(--yellow);box-shadow:0 0 16px var(--yellow);animation:pp .22s ease-in-out infinite}
+#dot.fetching {background:var(--accent);box-shadow:0 0 14px var(--accent);animation:sp .75s linear infinite}
+@keyframes pp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.2;transform:scale(.55)}}
+@keyframes sp{to{transform:rotate(360deg)}}
+.logo-title{font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.hdr-r{display:flex;align-items:center;gap:12px}
+.badge{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--muted);padding:3px 9px;border:1px solid var(--border);border-radius:20px}
+#osl{-webkit-appearance:none;width:70px;height:3px;border-radius:2px;background:rgba(255,255,255,.14);outline:none;cursor:pointer}
+#osl::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:var(--accent);cursor:pointer}
+
+/* SIDEBAR */
+#sb{background:var(--s1);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+#sb::-webkit-scrollbar{width:3px}
+#sb::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.pnl{padding:12px 14px;border-bottom:1px solid var(--border)}
+.lbl{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+.inp{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:7px 9px;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--text);outline:none;transition:border-color .2s}
+.inp:focus{border-color:rgba(0,229,200,.4)}
+.inp::placeholder{color:var(--muted)}
+textarea.inp{resize:none;line-height:1.5}
+.row{display:flex;gap:7px}
+.btn{padding:7px 11px;border-radius:7px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;border:1px solid;transition:all .14s;white-space:nowrap}
+.ba{background:rgba(0,229,200,.09);border-color:rgba(0,229,200,.3);color:var(--accent)}
+.ba:hover{background:rgba(0,229,200,.18)}
+.bm{background:rgba(255,255,255,.04);border-color:var(--border);color:var(--muted)}
+.bm:hover{background:rgba(255,255,255,.09);color:var(--text)}
+.btn:disabled{opacity:.3;cursor:not-allowed}
+
+/* START BUTTON */
+#start-btn{width:100%;padding:13px;border-radius:9px;cursor:pointer;font-family:'Syne',sans-serif;font-size:14px;font-weight:800;letter-spacing:.05em;border:2px solid rgba(0,229,200,.35);background:rgba(0,229,200,.08);color:var(--accent);transition:all .18s;display:flex;align-items:center;justify-content:center;gap:9px;margin-top:10px}
+#start-btn:hover{background:rgba(0,229,200,.16);transform:translateY(-1px)}
+#start-btn.stop{border-color:var(--red);background:rgba(255,64,96,.08);color:var(--red)}
+#start-btn.stop:hover{background:rgba(255,64,96,.16);transform:none}
+
+/* VAD */
+#vad-wrap{height:5px;background:rgba(255,255,255,.05);border-radius:3px;overflow:hidden;margin-top:8px}
+#vad-bar{height:100%;width:0%;border-radius:3px;transition:width .05s;background:var(--green)}
+
+/* SILENCE SLIDER */
+.sr{display:flex;align-items:center;gap:7px;font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:8px}
+#ssl{-webkit-appearance:none;flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.1);outline:none;cursor:pointer}
+#ssl::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:var(--green);cursor:pointer}
+
+/* STATUS */
+#sline{margin-top:8px;padding:8px 10px;border-radius:7px;background:rgba(255,255,255,.025);border:1px solid var(--border);font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--muted);min-height:34px;line-height:1.55}
+#sline.on{color:var(--green)} #sline.sp{color:var(--yellow)} #sline.ft{color:var(--accent)} #sline.er{color:var(--red)}
+
+/* DEVICE DISPLAY */
+#dev-pill{display:inline-block;margin-top:6px;padding:3px 8px;border-radius:4px;font-size:10px;font-family:'JetBrains Mono',monospace;background:rgba(0,229,200,.08);border:1px solid rgba(0,229,200,.2);color:var(--accent)}
+#dev-pill.bad{background:rgba(255,64,96,.08);border-color:rgba(255,64,96,.2);color:var(--red)}
+
+/* HISTORY */
+.hi{padding:6px 0;border-bottom:1px solid var(--border);font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--muted);cursor:pointer;line-height:1.4;transition:color .1s}
+.hi:hover{color:var(--text)}
+.hi b{color:var(--accent)}
+
+/* MAIN */
+#main{display:flex;flex-direction:column;overflow:hidden}
+#tw{padding:12px 16px 8px;border-bottom:1px solid var(--border);flex-shrink:0}
+.th{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.tlbl{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+#tbox{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:9px 11px;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--text);outline:none;resize:none;height:68px;line-height:1.55;transition:border-color .2s}
+#tbox:focus{border-color:rgba(0,229,200,.3)}
+#mw{display:flex;gap:7px;padding:7px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+#min{flex:1;height:34px;padding:7px 10px;font-size:12px}
+#abtn{padding:7px 14px}
+#aw{flex:1;padding:12px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:9px}
+#aw::-webkit-scrollbar{width:4px}
+#aw::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.ah{display:flex;align-items:center;justify-content:space-between}
+.albl{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+#abox{flex:1;font-size:13.5px;line-height:1.82;color:var(--text);white-space:pre-wrap;word-break:break-word;padding:14px 16px;background:var(--s1);border:1px solid var(--border);border-radius:9px;min-height:200px}
+#abox.empty{color:var(--muted);font-style:italic;font-size:12px}
+#abox.loading{color:var(--muted);font-style:italic}
+.dots::after{content:'';animation:dts 1.3s infinite}
+@keyframes dts{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}100%{content:''}}
+
+/* SETUP WIZARD */
+#wizard{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:999;backdrop-filter:blur(8px)}
+#wizard.hidden{display:none}
+#wbox{background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:500px;width:95%;max-height:90vh;overflow-y:auto}
+#wbox h2{font-size:20px;font-weight:800;color:var(--accent);margin-bottom:4px}
+#wbox .sub{font-size:12px;color:var(--muted);margin-bottom:20px}
+.wstep{display:flex;gap:12px;margin-bottom:12px;padding:13px;background:var(--s2);border-radius:10px;border:1px solid var(--border)}
+.wnum{width:26px;height:26px;border-radius:50%;background:rgba(0,229,200,.12);border:1px solid rgba(0,229,200,.3);color:var(--accent);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.wtxt{font-size:12px;color:var(--text);line-height:1.6}
+.wtxt b{color:var(--accent)}
+.wtxt code{background:rgba(0,229,200,.1);color:var(--accent);padding:1px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:11px}
+.wimg{margin-top:8px;padding:8px 10px;background:rgba(0,0,0,.3);border-radius:6px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--muted);line-height:1.7;border:1px solid var(--border)}
+.wimg b{color:var(--text)}
+.wnote{padding:10px 12px;border-radius:8px;background:rgba(79,163,255,.07);border:1px solid rgba(79,163,255,.2);font-size:11px;font-family:'JetBrains Mono',monospace;color:rgba(130,180,255,.85);line-height:1.6;margin-top:12px}
+</style>
+</head>
+<body>
+
+<!-- SETUP WIZARD -->
+<div id="wizard">
+  <div id="wbox">
+    <h2>⬡ Interview Assistant</h2>
+    <div class="sub">Windows setup — do this once, takes 2 minutes</div>
+
+    <div class="wstep">
+      <div class="wnum">1</div>
+      <div class="wtxt">
+        <b>Enable Stereo Mix</b> (captures everything playing through your speakers)<br><br>
+        Right-click the 🔊 speaker icon in taskbar →
+        <b>Sound settings</b> → <b>More sound settings</b><br><br>
+        Go to the <b>Recording</b> tab → right-click empty area →
+        tick <b>"Show Disabled Devices"</b>
+        <div class="wimg">
+          <b>Recording</b> tab shows:<br>
+          ☑ Microphone  — enabled<br>
+          ☐ <b>Stereo Mix</b>  — right-click → <b>Enable</b> → right-click again → <b>Set as Default Device</b>
+        </div>
+      </div>
+    </div>
+
+    <div class="wstep">
+      <div class="wnum">2</div>
+      <div class="wtxt">
+        <b>Set Stereo Mix as default in Chrome</b><br><br>
+        In Chrome address bar → <code>chrome://settings/content/microphone</code><br>
+        Change the default microphone to <b>Stereo Mix</b>
+        <div class="wimg">
+          Default microphone: [<b>Stereo Mix (Realtek …)</b> ▼]
+        </div>
+        <br>
+        <b>If Stereo Mix is not available</b> → install free <b>VB-Cable</b>:<br>
+        <code>vb-audio.com/Cable</code> → install → reboot → use <b>CABLE Output</b> as mic,
+        set <b>CABLE Input</b> as your audio output device in Windows
+      </div>
+    </div>
+
+    <div class="wstep">
+      <div class="wnum">3</div>
+      <div class="wtxt">
+        <b>Get a free Groq API key</b><br>
+        Go to <code>console.groq.com</code> → Sign up → API Keys → Create Key<br>
+        Paste it in the sidebar and click Save
+      </div>
+    </div>
+
+    <div class="wstep">
+      <div class="wnum">4</div>
+      <div class="wtxt">
+        <b>Host on GitHub Pages</b> (so Chrome remembers permission forever — no more popups)<br><br>
+        Push <code>index.html</code> to a GitHub repo → Settings → Pages → Deploy<br>
+        Open <code>https://yourname.github.io/interview-assistant</code> — done!<br><br>
+        <b>OR</b> just open this file locally — Chrome will ask once per session
+      </div>
+    </div>
+
+    <div class="wnote">
+      💡 <b>Why Stereo Mix works:</b> It's a Windows feature that treats your speaker output as a microphone input.
+      When the interviewer speaks in Google Meet, it plays through your speakers — Stereo Mix captures that
+      and sends it to this app, which transcribes it with Groq Whisper and generates an answer.
+    </div>
+
+    <button class="btn ba" onclick="$('wizard').classList.add('hidden')" style="width:100%;padding:13px;font-size:14px;margin-top:16px">
+      ✓ Done Setup — Open App
+    </button>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div id="dot"></div>
+    <span class="logo-title">Interview AI</span>
+  </div>
+  <div class="hdr-r">
+    <label style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:6px">
+      opacity <input type="range" id="osl" min="15" max="100" value="95">
+    </label>
+    <div class="badge" id="badge">idle</div>
+    <button class="btn bm" onclick="$('wizard').classList.remove('hidden')" style="font-size:10px;padding:3px 9px">setup guide</button>
+  </div>
+</header>
+
+<!-- SIDEBAR -->
+<div id="sb">
+
+  <div class="pnl">
+    <div class="lbl">Groq API Key</div>
+    <div class="row">
+      <input type="password" class="inp" id="akey" placeholder="gsk_… from console.groq.com" autocomplete="off" style="flex:1">
+      <button class="btn ba" onclick="saveKey()">Save</button>
+    </div>
+  </div>
+
+  <div class="pnl">
+    <div class="lbl">Your Role / Context</div>
+    <textarea class="inp" id="ctx" rows="3" placeholder="e.g. Senior React engineer, 5yrs exp. Applying at Google. Concise, confident answers."></textarea>
+  </div>
+
+  <div class="pnl">
+    <div class="lbl">Listening Controls</div>
+
+    <button id="start-btn" onclick="toggle()">
+      <span id="si">▶</span>&nbsp;<span id="sl">Start Listening</span>
+    </button>
+
+    <!-- Active device indicator -->
+    <div id="dev-pill" style="display:none"></div>
+
+    <div class="sr">
+      Answer after&nbsp;
+      <input type="range" id="ssl" min="500" max="4000" step="100" value="1800">
+      <b id="sv" style="color:var(--accent)">1.8s</b>&nbsp;silence
+    </div>
+
+    <div id="vad-wrap"><div id="vad-bar"></div></div>
+    <div id="sline">Press Start to begin</div>
+  </div>
+
+  <div class="pnl" style="flex:1">
+    <div class="lbl">History</div>
+    <div id="hlist"><span style="font-size:10px;color:var(--muted)">No history yet</span></div>
+  </div>
+</div>
+
+<!-- MAIN PANEL -->
+<div id="main">
+
+  <div id="tw">
+    <div class="th">
+      <span class="tlbl">Live Transcript (editable)</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn bm" onclick="$('tbox').value=''" style="font-size:10px;padding:3px 8px">Clear</button>
+        <button class="btn ba" onclick="submitT()" style="font-size:10px;padding:3px 8px">Submit ↵</button>
+      </div>
+    </div>
+    <textarea id="tbox" placeholder="Transcript builds here automatically… or paste/type a question and click Submit ↵"></textarea>
+  </div>
+
+  <div id="mw">
+    <input type="text" class="inp" id="min" placeholder="Or type question here and press Enter…">
+    <button class="btn ba" id="abtn" onclick="askManual()">ASK →</button>
+  </div>
+
+  <div id="aw">
+    <div class="ah">
+      <span class="albl">Answer</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn bm" id="cbtn" onclick="copyAns()" style="font-size:10px;padding:3px 9px">Copy</button>
+        <button class="btn bm" onclick="clearAll()" style="font-size:10px;padding:3px 9px">Clear</button>
+      </div>
+    </div>
+    <div id="abox" class="empty">Answer appears here automatically after a question is detected…<br><br>
+      <span style="font-size:11px;font-family:'JetBrains Mono',monospace">
+      📋 Tip: You can also paste any question in the transcript box above and click Submit
+      </span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+// CONSTANTS
+// ══════════════════════════════════════════════════
+const WHISPER  = 'whisper-large-v3-turbo';
+const LLM      = 'llama-3.3-70b-versatile';
+const VAD_THR  = 0.011;   // RMS threshold — lower = more sensitive
+const MIN_MS   = 500;     // min speech duration to process
+
+// ══════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════
+let apiKey = localStorage.getItem('ia_win_key') || '';
+let SILENCE_MS = 1800;
+let isRunning = false, isSpeaking = false;
+let silenceTimer = null, silenceStart = null, speechStart = null;
+let history = [];
+
+let audioCtx = null, analyser = null, vadRaf = null;
+let captureStream = null;
+let recorder = null, recChunks = [], isRecording = false;
+
+const $ = id => document.getElementById(id);
+
+// ══════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════
+if (apiKey) {
+  $('akey').value = apiKey;
+  setDot('ready'); setBadge('ready');
+  $('wizard').classList.add('hidden');
+}
+
+$('osl').addEventListener('input', e => document.body.style.opacity = e.target.value / 100);
+$('ssl').addEventListener('input', e => {
+  SILENCE_MS = +e.target.value;
+  $('sv').textContent = (SILENCE_MS / 1000).toFixed(1) + 's';
+});
+$('min').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); askManual(); } });
+
+// ══════════════════════════════════════════════════
+// API KEY
+// ══════════════════════════════════════════════════
+function saveKey() {
+  const v = $('akey').value.trim();
+  if (!v || !v.startsWith('gsk_')) {
+    setStatus('⚠ Key should start with gsk_', 'er'); return;
+  }
+  apiKey = v;
+  localStorage.setItem('ia_win_key', v);
+  setDot('ready'); setBadge('ready');
+  setStatus('✓ API key saved — press Start', 'on');
+}
+
+// ══════════════════════════════════════════════════
+// START / STOP
+// ══════════════════════════════════════════════════
+async function toggle() {
+  if (isRunning) { stopAll(); return; }
+  await startListening();
+}
+
+async function startListening() {
+  if (!apiKey) { setStatus('⚠ Enter your Groq API key first', 'er'); return; }
+
+  setStatus('Requesting microphone access…', '');
+
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        // Disable all processing so we get raw speaker audio
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+        sampleRate: 16000,
+      },
+      video: false
+    });
+  } catch (e) {
+    setStatus('⚠ Microphone denied. Allow mic access in browser.', 'er');
+    return;
+  }
+
+  captureStream = stream;
+
+  // ── Show which device Chrome selected ────────
+  const track = stream.getAudioTracks()[0];
+  const label = track?.label || '';
+  const pill = $('dev-pill');
+  pill.style.display = 'inline-block';
+
+  const isStereoMix = /stereo\s*mix|wave\s*out\s*mix|what\s*u\s*hear|loopback/i.test(label);
+  const isVBCable   = /cable|vb-audio|virtual/i.test(label);
+  const isGoodSrc   = isStereoMix || isVBCable;
+
+  if (isGoodSrc) {
+    pill.className = 'dev-pill';
+    pill.textContent = '✓ ' + label;
+  } else {
+    pill.className = 'dev-pill bad';
+    pill.textContent = '⚠ ' + (label || 'Unknown mic') + ' — switch to Stereo Mix';
+  }
+
+  // ── Web Audio for VAD ─────────────────────────
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 2048;
+  analyser.smoothingTimeConstant = 0.5;
+  audioCtx.createMediaStreamSource(stream).connect(analyser);
+
+  // ── MediaRecorder — records the actual stream ─
+  initRecorder(stream);
+
+  // ── Start VAD ────────────────────────────────
+  startVAD();
+
+  isRunning = true;
+  $('start-btn').classList.add('stop');
+  $('si').textContent = '■';
+  $('sl').textContent = 'Stop Listening';
+  setDot('listening');
+  setBadge('live');
+  setStatus('👂 Listening… (speak or let interviewer speak)', 'on');
+}
+
+function stopAll() {
+  isRunning = false; isSpeaking = false;
+  clearTimeout(silenceTimer); silenceTimer = null;
+  cancelAnimationFrame(vadRaf);
+  if (recorder && recorder.state !== 'inactive') { recorder.stop(); }
+  if (captureStream) { captureStream.getTracks().forEach(t => t.stop()); captureStream = null; }
+  if (audioCtx) { audioCtx.close(); audioCtx = null; }
+  $('start-btn').classList.remove('stop');
+  $('si').textContent = '▶'; $('sl').textContent = 'Start Listening';
+  $('vad-bar').style.width = '0%';
+  $('dev-pill').style.display = 'none';
+  setDot('ready'); setBadge('stopped');
+  setStatus('Stopped — click Start to listen again', '');
+}
+
+// ══════════════════════════════════════════════════
+// MEDIA RECORDER
+// Records the actual captured audio stream,
+// sends to Groq Whisper for real transcription
+// ══════════════════════════════════════════════════
+function initRecorder(stream) {
+  const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/ogg', 'audio/mp4']
+    .find(m => MediaRecorder.isTypeSupported(m)) || '';
+
+  recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : {});
+
+  recorder.ondataavailable = e => {
+    if (e.data && e.data.size > 0) recChunks.push(e.data);
+  };
+
+  recorder.onstop = async () => {
+    if (!recChunks.length) return;
+    const blob = new Blob(recChunks, { type: recorder.mimeType || 'audio/webm' });
+    recChunks = [];
+    const duration = Date.now() - (speechStart || Date.now());
+    if (duration < MIN_MS || blob.size < 800) {
+      if (isRunning) setStatus('👂 Listening…', 'on');
+      return;
+    }
+    await transcribeBlob(blob);
+    // Re-init recorder for next utterance
+    if (isRunning && captureStream) initRecorder(captureStream);
+  };
+}
+
+function startRec() {
+  recChunks = [];
+  speechStart = Date.now();
+  if (recorder && recorder.state === 'inactive') {
+    recorder.start(200);
+    isRecording = true;
+  }
+}
+
+function stopRec() {
+  if (recorder && recorder.state === 'recording') {
+    recorder.stop();
+    isRecording = false;
+  }
+}
+
+// ══════════════════════════════════════════════════
+// VAD — Voice Activity Detection
+// ══════════════════════════════════════════════════
+function startVAD() {
+  const buf = new Float32Array(analyser.fftSize);
+
+  function loop() {
+    analyser.getFloatTimeDomainData(buf);
+    let sum = 0;
+    for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+    const rms = Math.sqrt(sum / buf.length);
+
+    const pct = Math.min(100, rms / 0.07 * 100);
+    $('vad-bar').style.width = pct + '%';
+    $('vad-bar').style.background = rms > VAD_THR ? 'var(--yellow)' : 'var(--green)';
+
+    const voiceOn = rms > VAD_THR;
+
+    if (voiceOn && !isSpeaking) {
+      // ── Voice started ──────────────────────
+      isSpeaking = true;
+      silenceStart = null;
+      clearTimeout(silenceTimer); silenceTimer = null;
+      startRec();
+      setDot('speech');
+      setStatus('🎙 Recording…', 'sp');
+
+    } else if (!voiceOn && isSpeaking) {
+      // ── Voice just stopped ─────────────────
+      isSpeaking = false;
+      silenceStart = Date.now();
+
+      if (!silenceTimer) {
+        const tick = () => {
+          const elapsed = Date.now() - silenceStart;
+          const left = ((SILENCE_MS - elapsed) / 1000).toFixed(1);
+          if (elapsed < SILENCE_MS) {
+            setStatus(`⏳ Processing in ${left}s…`, 'on');
+            setDot('listening');
+            silenceTimer = setTimeout(tick, 80);
+          } else {
+            silenceTimer = null;
+            stopRec(); // → triggers recorder.onstop → transcribeBlob
+          }
+        };
+        silenceTimer = setTimeout(tick, 80);
+      }
+
+    } else if (!voiceOn && !isSpeaking && !silenceTimer) {
+      setDot('listening');
+      setStatus('👂 Listening for question…', 'on');
+    }
+
+    vadRaf = requestAnimationFrame(loop);
+  }
+
+  loop();
+}
+
+// ══════════════════════════════════════════════════
+// TRANSCRIBE via Groq Whisper
+// ══════════════════════════════════════════════════
+async function transcribeBlob(blob) {
+  setDot('fetching');
+  setStatus('✍ Transcribing…', 'ft');
+  setBadge('thinking');
+
+  try {
+    const ext = blob.type.includes('ogg') ? 'ogg' :
+                blob.type.includes('mp4') ? 'mp4' : 'webm';
+    const form = new FormData();
+    form.append('file', blob, 'audio.' + ext);
+    form.append('model', WHISPER);
+    form.append('language', 'en');
+    form.append('response_format', 'json');
+
+    const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + apiKey },
+      body: form
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error('Whisper ' + res.status + ': ' + errText);
+    }
+
+    const data = await res.json();
+    const text = (data.text || '').trim();
+
+    // Filter out Whisper hallucinations on silence
+    const junk = /^(thank you|thanks|you|bye|\.+|\s*)$/i.test(text);
+    if (!text || text.length < 4 || junk) {
+      if (isRunning) setStatus('👂 Nothing heard clearly — listening again…', 'on');
+      setDot('listening'); setBadge('live');
+      return;
+    }
+
+    $('tbox').value = text;
+    await getAnswer(text);
+
+  } catch (e) {
+    console.error(e);
+    setStatus('⚠ Transcription error: ' + e.message, 'er');
+    setDot('listening'); setBadge('live');
+  }
+}
+
+// ══════════════════════════════════════════════════
+// GET ANSWER — Groq LLM
+// ══════════════════════════════════════════════════
+async function getAnswer(question) {
+  const ctx = $('ctx').value.trim();
+  const system = `You are an expert interview coach. Give sharp, confident, interview-ready answers.
+${ctx ? 'Candidate context: ' + ctx : ''}
+Rules:
+- Concise but complete (2-4 paragraphs max)
+- Use STAR method when relevant (Situation, Task, Action, Result)
+- Sound human and confident, not robotic
+- Plain text only — no markdown, no bullet points, no asterisks`;
+
+  setDot('fetching');
+  setStatus('⚡ Generating answer…', 'ft');
+  $('abtn').disabled = true;
+  $('abox').className = 'loading dots';
+  $('abox').textContent = 'Thinking';
+  $('abox').style.color = '';
+
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({
+        model: LLM,
+        max_tokens: 700,
+        temperature: 0.7,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: question }
+        ]
+      })
+    });
+
+    if (!res.ok) throw new Error('LLM ' + res.status + ': ' + await res.text());
+
+    const data = await res.json();
+    const ans = data.choices?.[0]?.message?.content?.trim() || 'No answer received.';
+
+    $('abox').className = '';
+    $('abox').textContent = ans;
+    history.unshift({ q: question, a: ans });
+    renderHistory();
+    setBadge('live');
+
+  } catch (e) {
+    $('abox').className = '';
+    $('abox').textContent = '⚠ ' + e.message;
+    $('abox').style.color = 'var(--red)';
+    setBadge('error');
+    console.error(e);
+  }
+
+  $('abtn').disabled = false;
+  if (isRunning) { setDot('listening'); setStatus('👂 Listening for next question…', 'on'); }
+  else setDot('ready');
+}
+
+// ══════════════════════════════════════════════════
+// MANUAL / SUBMIT
+// ══════════════════════════════════════════════════
+function askManual() {
+  const q = $('min').value.trim();
+  if (!q) return;
+  $('tbox').value = q; $('min').value = '';
+  getAnswer(q);
+}
+function submitT() {
+  const q = $('tbox').value.trim();
+  if (q) getAnswer(q);
+}
+
+// ══════════════════════════════════════════════════
+// HISTORY
+// ══════════════════════════════════════════════════
+function renderHistory() {
+  const el = $('hlist');
+  if (!history.length) { el.innerHTML = '<span style="font-size:10px;color:var(--muted)">No history yet</span>'; return; }
+  el.innerHTML = history.slice(0, 10).map((h, i) =>
+    `<div class="hi" onclick="loadH(${i})"><b>Q:</b> ${h.q.slice(0, 60)}${h.q.length > 60 ? '…' : ''}</div>`
+  ).join('');
+}
+function loadH(i) {
+  $('tbox').value = history[i].q;
+  $('abox').className = '';
+  $('abox').textContent = history[i].a;
+  $('abox').style.color = 'var(--text)';
+}
+
+// ══════════════════════════════════════════════════
+// COPY / CLEAR
+// ══════════════════════════════════════════════════
+function copyAns() {
+  const t = $('abox').textContent;
+  if (!t || $('abox').classList.contains('empty')) return;
+  navigator.clipboard.writeText(t).then(() => {
+    $('cbtn').textContent = 'Copied ✓'; $('cbtn').style.color = 'var(--green)';
+    setTimeout(() => { $('cbtn').textContent = 'Copy'; $('cbtn').style.color = ''; }, 2000);
+  });
+}
+function clearAll() {
+  $('abox').className = 'empty';
+  $('abox').textContent = 'Answer appears here automatically after a question is detected…\n\n📋 Tip: You can also paste any question in the transcript box above and click Submit';
+  $('abox').style.color = '';
+  $('tbox').value = '';
+}
+
+// ══════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════
+function setDot(s) { $('dot').className = s; }
+function setStatus(msg, cls) { $('sline').className = cls || ''; $('sline').textContent = msg; }
+function setBadge(s) {
+  const m = { idle:'idle', ready:'ready', live:'● live', thinking:'⚡ thinking', stopped:'stopped', error:'error' };
+  $('badge').textContent = m[s] || s;
+}
+</script>
+</body>
+</html>
