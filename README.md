@@ -3,7 +3,6 @@
 A transparent, always-on-top interview assistant that listens to your interview and generates instant answers using Groq AI.
 
 ## 🚀 Live App
-👉 **https://YOUR_USERNAME.github.io/interview-assistant**
 
 ## Setup (2 minutes)
 
